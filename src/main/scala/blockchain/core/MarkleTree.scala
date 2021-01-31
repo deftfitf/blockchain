@@ -1,13 +1,14 @@
 package blockchain.core
 
 import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 import java.util.Base64
 
 import scala.util.Random
 
-class MarkleTree(private[this] val N: Int,
-                 private[this] val tree: Array[Array[Byte]]) {
+class MarkleTree(
+    private[this] val N: Int,
+    private[this] val tree: Array[Array[Byte]]
+) {
 
   def markleRoot: Array[Byte] =
     tree(1).clone()
@@ -38,11 +39,13 @@ class MarkleTree(private[this] val N: Int,
 
   def printTree(): Unit = {
     val base64Encoded =
-      tree.map(bytes => if (bytes != null) {
-        new String(Base64.getEncoder.encode(bytes), StandardCharsets.UTF_8)
-      } else {
-        "null"
-      })
+      tree.map(bytes =>
+        if (bytes != null) {
+          new String(Base64.getEncoder.encode(bytes), StandardCharsets.UTF_8)
+        } else {
+          "null"
+        }
+      )
 
     var bldr: scala.collection.mutable.IndexedSeq[Char] = new StringBuilder
     var l = N
@@ -53,7 +56,8 @@ class MarkleTree(private[this] val N: Int,
         bldr = bldr.prependedAll(
           base64Encoded(r)
             .appendedAll(" " * width)
-            .prependedAll(" " * width))
+            .prependedAll(" " * width)
+        )
         r -= 1
       }
       l = (r + 1) / 2
@@ -68,7 +72,10 @@ class MarkleTree(private[this] val N: Int,
 
 object MarkleTree {
 
-  def construct(transactionHashes: Array[Array[Byte]], hashStrategy: HashStrategy): MarkleTree = {
+  def construct(
+      transactionHashes: Array[Array[Byte]],
+      hashStrategy: HashStrategy
+  ): MarkleTree = {
     val size = transactionHashes.length
     val N = Math.pow(2, (Math.log(size) / Math.log(2)).ceil).toInt
     val tree = new Array[Array[Byte]](2 * N)
@@ -82,11 +89,11 @@ object MarkleTree {
     while (r > 0) {
       while (l <= r) {
         val concatenated =
-          (Option(tree(2 * r)),  Option(tree(2 * r + 1))) match {
+          (Option(tree(2 * r)), Option(tree(2 * r + 1))) match {
             case (Some(l), Some(r)) => l.concat(r)
-            case (Some(l), None) => l
-            case (None, Some(r)) => r
-            case _ => null
+            case (Some(l), None)    => l
+            case (None, Some(r))    => r
+            case _                  => null
           }
         tree(r) = Option(concatenated).map(hashStrategy.hash).orNull
         r -= 1
@@ -104,13 +111,13 @@ object MarkleTree {
   def main(args: Array[String]): Unit = {
     val hashStrategy = new HashStrategy {
       override def hash(bytes: Array[Byte]): Array[Byte] = {
-        val sha256 = MessageDigest.getInstance("SHA-256")
-        Option(bytes).map(sha256.digest).orNull
+        Option(bytes).map(SHA256.hash).orNull
       }
     }
 
     val rnd = new Random()
-    val bytes = (0 until 10).map(_ => hashStrategy.hash(rnd.nextBytes(512))).toArray
+    val bytes =
+      (0 until 10).map(_ => hashStrategy.hash(rnd.nextBytes(512))).toArray
     val markleTree = MarkleTree.construct(bytes, hashStrategy)
 
     val partialTreeBytes = markleTree.partialTree(List(2, 4))
